@@ -2,9 +2,9 @@ import { Router } from "express";
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
-import { adminModel } from "../db"
+import { adminModel, courseModel, purchaseModel } from "../db"
 import { adminSigninSchema, adminSignupSchema } from "../zodSchema";
-import { adminMiddleware } from "../middleware/admin";
+import { adminMiddleware, AuthRequest } from "../middleware/admin";
 
 dotenv.config();
 
@@ -89,20 +89,72 @@ adminRouter.post("/signin", async function (req, res) {
     }
 });
 
-adminRouter.post("/course", adminMiddleware, function (req, res) {
+adminRouter.post("/course", adminMiddleware, async function (req: AuthRequest, res) {
+    const adminId = req.userId;
+    const { title, description, imageUrl, price } = req.body;
+
+    const course = await courseModel.create({
+        title,
+        description,
+        imageUrl,
+        price,
+        creatorId: adminId
+    });
+    console.log(course._id.toString());
+
     res.json({
-        message: "You are course endpoint of admin"
+        message: "course created",
+        courseId: course._id.toString()
     })
 });
 
-adminRouter.put("/course", function (req, res) {
-    res.json({
-        message: "You are signup"
-    })
+adminRouter.put("/course", adminMiddleware, async function (req: AuthRequest, res) {
+    const adminId = req.userId;
+    const { title, description, imageUrl, price, courseId } = req.body;
+
+    try {
+        const course = await courseModel.updateOne({
+            _id: courseId,
+            creatorId: adminId
+        }, {
+            title,
+            description,
+            imageUrl,
+            price,
+        })
+
+        if(!course) {
+            res.status(404).json({
+                "message": "Please provide your courseId"
+            })
+            return
+        }
+
+        res.json({
+            message: "Course updated"
+        })
+    } catch(e) {
+        res.status(500).json({
+            "error": "Something went wrong"
+        })
+    }
 });
 
-adminRouter.get("/course/bulk", function (req, res) {
-    res.json({
-        message: "You are in course/bulk"
-    })
+adminRouter.get("/course/bulk", adminMiddleware, async function (req: AuthRequest, res) {
+    const adminId = req.userId;
+
+    try {
+        const courses = courseModel.find({
+            creatorId: adminId
+        });
+
+        res.status(200).json({
+            message: "successful",
+            courses
+        })
+    } catch(e) {
+        res.status(500).json({
+            "error": "Something went wrong"
+        })
+    }
 });
