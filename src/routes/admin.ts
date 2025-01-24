@@ -3,7 +3,7 @@ import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 import { adminModel, courseModel, purchaseModel } from "../db"
-import { adminSigninSchema, adminSignupSchema } from "../zodSchema";
+import { adminSigninSchema, adminSignupSchema, courseSchema } from "../zodSchema";
 import { adminMiddleware, AuthRequest } from "../middleware/admin";
 
 dotenv.config();
@@ -91,28 +91,49 @@ adminRouter.post("/signin", async function (req, res) {
 
 adminRouter.post("/course", adminMiddleware, async function (req: AuthRequest, res) {
     const adminId = req.userId;
-    const { title, description, imageUrl, price } = req.body;
+    const courseData = courseSchema.safeParse(req.body);
+    if(!courseData.success) {
+        res.status(400).json({
+            "error": "Invalid input"
+        })
+        return
+    }
 
-    const course = await courseModel.create({
-        title,
-        description,
-        imageUrl,
-        price,
-        creatorId: adminId
-    });
-    console.log(course._id.toString());
+    try {
+        const { title, description, imageUrl, price } = courseData.data;
 
-    res.json({
-        message: "course created",
-        courseId: course._id.toString()
-    })
+        const course = await courseModel.create({
+            title,
+            description,
+            imageUrl,
+            price,
+            creatorId: adminId
+        });
+
+        res.json({
+            message: "course created",
+            courseId: course._id.toString()
+        })
+    } catch(e) {
+        res.status(500).json({
+            "error": "something went wrong"
+        })
+    }
 });
 
 adminRouter.put("/course", adminMiddleware, async function (req: AuthRequest, res) {
     const adminId = req.userId;
-    const { title, description, imageUrl, price, courseId } = req.body;
+    const courseData = courseSchema.safeParse(req.body);
+    if(!courseData.success) {
+        res.status(400).json({
+            "error": "Invalid input"
+        })
+        return
+    }
 
     try {
+        const { title, description, imageUrl, price, courseId } = courseData.data;
+        
         const course = await courseModel.updateOne({
             _id: courseId,
             creatorId: adminId

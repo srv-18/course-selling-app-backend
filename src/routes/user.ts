@@ -2,9 +2,9 @@ import { Router } from "express"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import { userSigninSchema, userSignupSchema } from "../zodSchema"
-import { userModel } from "../db";
+import { purchaseModel, userModel } from "../db";
 import dotenv from "dotenv"
-import { userMiddleware } from "../middleware/user";
+import { userMiddleware, AuthRequest } from "../middleware/user";
 
 dotenv.config();
 
@@ -89,8 +89,28 @@ userRouter.post("/signin", async function (req, res) {
     }
 });
 
-userRouter.post("/purchase", userMiddleware, function (req, res) {
-    res.json({
-        message: "You are sign up"
-    })
+userRouter.get("/purchases", userMiddleware, async function (req: AuthRequest, res) {
+    const userId = req.userId;
+
+    try {
+        const purchases = await purchaseModel.find({
+            userId
+        });
+
+        if(!purchases) {
+            res.status(404).json({
+                "error": "You have not purchase any course"
+            })
+            return
+        }
+
+        res.json({
+            purchases
+        })
+
+    } catch(e) {
+        res.status(500).json({
+            "error": "Something went wrong"
+        })
+    }
 });
