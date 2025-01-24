@@ -2,7 +2,7 @@ import { Router } from "express"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import { userSigninSchema, userSignupSchema } from "../zodSchema"
-import { purchaseModel, userModel } from "../db";
+import { courseModel, purchaseModel, userModel } from "../db";
 import dotenv from "dotenv"
 import { userMiddleware, AuthRequest } from "../middleware/user";
 
@@ -97,15 +97,20 @@ userRouter.get("/purchases", userMiddleware, async function (req: AuthRequest, r
             userId
         });
 
-        if(!purchases) {
+        if(purchases.length == 0) {
             res.status(404).json({
                 "error": "You have not purchase any course"
             })
             return
         }
 
+        const coursesData = await courseModel.find({
+            _id: { $in: purchases.map(x => x.courseId) }
+        });
+
         res.json({
-            purchases
+            purchases,
+            coursesData
         })
 
     } catch(e) {
